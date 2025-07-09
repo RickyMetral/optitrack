@@ -18,6 +18,8 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 find_package(Threads REQUIRED)
 find_package(px4_msgs REQUIRED)
 
@@ -35,6 +37,8 @@ add_executable(publish_motive_odometry_node ${SOURCES})
 ament_target_dependencies(publish_motive_odometry_node
 	rclcpp
 	px4_msgs
+	tf2_geometry_msgs
+	tf2
 )
 
 target_include_directories(publish_motive_odometry_node PRIVATE
