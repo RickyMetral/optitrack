@@ -198,7 +198,10 @@ VrpnClient::VrpnClient(std::string rigidBodyName, std::string server_address) : 
 	rclcpp::shutdown();
 	exit(1);
     }
-    this->mainloop();
+    this->timer_ = this->create_wall_timer(
+		   std::chrono::milliseconds(10),
+		   std::bind(&VrpnClient::mainloop, this));
+
 }
 
 VrpnClient::~VrpnClient()
@@ -210,9 +213,6 @@ VrpnClient::~VrpnClient()
 
 void VrpnClient::mainloop()
 {  
-   while(rclcpp::ok()){
-      connection->mainloop();
-      tracker->mainloop();
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
-   }
+   connection->mainloop();
+   tracker->mainloop();
 }

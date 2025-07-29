@@ -14,6 +14,7 @@ class ResetEstimator : public rclcpp::Node {
 private:
 	rclcpp::Publisher<px4_msgs::msg::VehicleCommand>::SharedPtr command_pub_;
 	rclcpp::Subscription<px4_msgs::msg::VehicleOdometry>::SharedPtr odom_sub_;
+	rclcpp::TimerBase::SharedPtr timer_;
 	vector<float> x_values;
 	vector<float> y_values;
 	vector<float> z_values;
@@ -54,29 +55,32 @@ private:
 	}
 
 	void wait_estimator_converge(){
+		bool converged = false;
 
 		RCLCPP_INFO(this->get_logger(), "Waiting for the estimator to converge...");
 	
 		while(rclcpp::ok()){
 		
 
-		auto [min_x, max_x] = std::minmax_element(x_values.begin(), x_values.end());
-	    	auto [min_y, max_y] = std::minmax_element(y_values.begin(), y_values.end());
-	    	auto [min_z, max_z] = std::minmax_element(z_values.begin(), z_values.end());
+			auto [min_x, max_x] = std::minmax_element(x_values.begin(), x_values.end());
+		    	auto [min_y, max_y] = std::minmax_element(y_values.begin(), y_values.end());
+		    	auto [min_z, max_z] = std::minmax_element(z_values.begin(), z_values.end());
 
-		float range_x = *max_x - *min_x;
-		float range_y = *max_y - *min_y;
-		float range_z = *max_z - *min_z;
+			float range_x = *max_x - *min_x;
+			float range_y = *max_y - *min_y;
+			float range_z = *max_z - *min_z;
 
-		RCLCPP_INFO(this->get_logger(),
-			"range_x: %.3f", "range_y: %.3f", "range_z: %.3f",
-		       	range_x, range_y, range_z);
-		
-		if(range_x < CONVERGE_THRESHOLD && 
-		   range_y < CONVERGE_THRESHOLD && 
-		   range_z < CONVERGE_THRESHOLD) {break;}
+			RCLCPP_INFO(this->get_logger(),
+				"range_x: %.3f range_y: %.3f range_z: %.3f",
+			       	range_x, range_y, range_z);
+			
+			if(range_x < CONVERGE_THRESHOLD && 
+			   range_y < CONVERGE_THRESHOLD && 
+			   range_z < CONVERGE_THRESHOLD) {converged = true; break;}
 		}
-		RCLCPP_INFO(this->get_logger(), "Estimator Converged Successfully.");
+		if(converged){
+			RCLCPP_INFO(this->get_logger(), "Estimator Converged Successfully.");
+		}
 		//TODO Add shutdwon feature after convergence
 	}
 
@@ -93,10 +97,16 @@ public:
 		this->command_pub_ = this->create_publisher<px4_msgs::msg::VehicleCommand>(
 		  "/fmu/in/vehicle_command", 10);
 		this->odom_sub_ = this->create_subscription<px4_msgs::msg::VehicleOdometry>(
-		  "fmu/out/vehicle_odometry", 10,
+		  "/fmu/out/vehicle_odometry", 10,
 		std::bind(&ResetEstimator::odom_callback, this, std::placeholders::_1));
 
-		this->send_reset_flag();
+		this->timer_ = this->create_wall_timer(
+			std::chrono::milliseconds(500),
+			[this]() {
+				this->timer_->cancel();
+				this->send_reset_flag();
+			}
+		);
 	}
 
 
