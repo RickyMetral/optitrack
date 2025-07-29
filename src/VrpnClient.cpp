@@ -24,6 +24,16 @@ void VrpnClient::log_pose_tracker(const rclcpp::Logger& logger, const vrpn_TRACK
    );
 }
 
+void log_changed_pose(const rclcpp::Logger& logger, const vrpn_TRACKERCB& t, const double (&quat)[4])
+{
+   RCLCPP_INFO(logger,
+   "Quaternions Before Transform: %.3f %.3f %.3f %.3f\nQuaternions After Transform: %.3f %.3f %.3f %.3f\nNED Position: %.3f %.3f %.3f",
+   t.quat[3], t.quat[0], t.quat[1], t.quat[2],
+   quat[3], quat[0], quat[2], -quat[1],
+   t.pos[0], t.pos[2], -t.pos[1]
+   );
+}
+
 void VrpnClient::log_vel_tracker(const rclcpp::Logger& logger, const vrpn_TRACKERVELCB& t)
 {
    RCLCPP_INFO(logger,
@@ -73,11 +83,10 @@ void VrpnClient::rotate_quat_arr(double angle, char axis, double(&quat_arr)[4])
 
 void VrpnClient::set_msg(VehicleOdometry& msg)
 {
-
    //Defines our coordinate frames
    msg.pose_frame = VehicleOdometry::POSE_FRAME_NED;
    msg.velocity_frame = VehicleOdometry::VELOCITY_FRAME_NED;
-   
+
    msg.reset_counter = 0;
    msg.quality = 100;
    
@@ -111,7 +120,7 @@ void VRPN_CALLBACK VrpnClient::handle_vel(void* userData, const vrpn_TRACKERVELC
    self->odom_msg.angular_velocity[2] = quat_arr[1];
    self->odom_msg.angular_velocity[3] = quat_arr[2];
 
-   self->log_vel_tracker(self->node->get_logger(), t);
+   self->log_vel_tracker(self->get_logger(), t);
 }
 
 //Callback function for receiving tracker position data
@@ -126,33 +135,34 @@ void VRPN_CALLBACK VrpnClient::handle_pose(void* userData, const vrpn_TRACKERCB 
     self->odom_msg.timestamp_sample = self->odom_msg.timestamp - 10;//Timestamp_sample is when sample was taken from mocap
 
 
-    self->odom_msg.position[0] = t.pos[0];//(x,y,z), motive has Y as vertical axis
-    self->odom_msg.position[1] = t.pos[2];
-    self->odom_msg.position[2] = -t.pos[1];
+    self->odom_msg.position[0] = t.pos[0];//Motive x -> NED X(North)
+    self->odom_msg.position[1] = t.pos[2];//Motive z -> NED Y(EAST)
+    self->odom_msg.position[2] = -t.pos[1];//Motive y -> NED Z(Down)
 
-    self->rotate_quat_arr(90, 'x', quat_arr);
 
-    self->odom_msg.q[0] = quat_arr[3];//(w,x,y,z)
-    self->odom_msg.q[1] = quat_arr[0];
-    self->odom_msg.q[2] = quat_arr[1];
-    self->odom_msg.q[3] = quat_arr[2];
+    //Changes Motive coordinate frame (x-left, z-forward, y-up) to voxl2 frame (NED)
+    //(x, y, z, w) -> (w, x, y, z)
+    self->odom_msg.q[0] = quat_arr[3];//w unchanged
+    self->odom_msg.q[1] = quat_arr[0];//Motive x -> NED X(North)
+    self->odom_msg.q[2] = quat_arr[2];//Motive z -> NED Y(East)
+    self->odom_msg.q[3] = -quat_arr[1];//Motive y -> NED Z(Down)
 
     self->odom_msg.reset_counter = 0;
-    self->odom_msg.quality = 90;
+    self->odom_msg.quality = 100;
 
     self->odom_publisher_->publish(self->odom_msg);
-    self->log_pose_tracker(self->node->get_logger(), t, quat_arr);
+    self->log_pose_tracker(self->get_logger(), t, quat_arr);
+    //log_changed_pose(self->get_logger(), t, quat_arr);
 }
 
 
 
-VrpnClient::VrpnClient(std::string rigidBodyName, std::string server_address)
+VrpnClient::VrpnClient(std::string rigidBodyName, std::string server_address) : Node("publish_mocap_odometry_node")
 {
     // Set your tracker name & VRPN server address
     const std::string full_address = rigidBodyName + "@" + server_address;
     set_msg(odom_msg);//Sets the default parameters for our message
-    this->node = rclcpp::Node::make_shared("publish_motive_odometry_node");
-    this->odom_publisher_ = node->create_publisher<VehicleOdometry>("/fmu/in/vehicle_mocap_odometry", 10); 
+    this->odom_publisher_ = this->create_publisher<px4_msgs::msg::VehicleOdometry>("/fmu/in/vehicle_visual_odometry", 10); 
 
     // Use vrpn_get_connection_by_name() instead of implicit connection
     this->connection = vrpn_get_connection_by_name(full_address.c_str());
@@ -182,11 +192,13 @@ VrpnClient::VrpnClient(std::string rigidBodyName, std::string server_address)
 
     // Verify connection
     if (connection->connected()) {
-        std::cout << "Successfully connected to VRPN server." << std::endl;
+        RCLCPP_INFO(this->get_logger(), "Successfully connected to VRPN server.");
     } else {
-        std::cerr << "Failed to connect to VRPN server after waiting." << std::endl;
-	exit(-1);
+       	RCLCPP_ERROR(this->get_logger(), "Failed to connect to VRPN server after waiting.");
+	rclcpp::shutdown();
+	exit(1);
     }
+    this->mainloop();
 }
 
 VrpnClient::~VrpnClient()
@@ -197,8 +209,10 @@ VrpnClient::~VrpnClient()
 }
 
 void VrpnClient::mainloop()
-{
-   connection->mainloop();
-   tracker->mainloop();
-   std::this_thread::sleep_for(std::chrono::milliseconds(10));
+{  
+   while(rclcpp::ok()){
+      connection->mainloop();
+      tracker->mainloop();
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+   }
 }

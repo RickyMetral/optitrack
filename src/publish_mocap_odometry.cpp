@@ -7,16 +7,11 @@ int main(int argc, char** argv)
 		std::cerr << "Usage: vrpn_node <rigid_body_name>" << std::endl;
 		return -1;
 	}
-	std::string rigidBody = argv[1];
+	std::string rigid_body = argv[1];
 	std::string server_ip = "192.168.1.42:3883";
 
     	rclcpp::init(argc, argv);
-
-    	auto vrpn = std::make_shared<VrpnClient>(rigidBody, server_ip); 
-
-    	while (rclcpp::ok()){
-    	        vrpn->mainloop();
-	}
+	rclcpp::spin(std::make_shared<VrpnClient>(rigid_body, server_ip));
     	rclcpp::shutdown();
     	return 0;
 }

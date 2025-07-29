@@ -3,7 +3,7 @@
 <package format="3">
   <name>optitrack</name>
   <version>0.0.0</version>
-  <description>Receives Motive VRPN Data and publishes the propoer topics for Starling to use pose data</description>
+  <description>Package to use VRPN with Optitrack to provide external pose data to Starling 2. Receives Motive VRPN Data and publishes to "/fmu/in/vehicle_visual_odometry". Also provides node to reset the EKF2 estimator and wait for it to converge with the mocap data.</description>
   <maintainer email="ricardometral2005@gmail.com">root</maintainer>
   <license>TODO: License declaration</license>
 

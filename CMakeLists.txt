@@ -24,45 +24,58 @@ find_package(Threads REQUIRED)
 find_package(px4_msgs REQUIRED)
 
 # Source files
-set(SOURCES
-	src/starling-pose-stream.cpp
+set(VRPN_SOURCES
+	src/publish_mocap_odometry.cpp
 	src/VrpnClient.cpp
 )
 
 
+set(ESTIMATOR_RESET_SOURCES
+	src/reset_estimator.cpp
+)
+
 set(VRPN_INSTALL_DIR "/usr/local/lib")
 
-add_executable(publish_motive_odometry_node ${SOURCES})
+add_executable(publish_mocap_odometry_node ${VRPN_SOURCES})
 
-ament_target_dependencies(publish_motive_odometry_node
+ament_target_dependencies(publish_mocap_odometry_node
 	rclcpp
 	px4_msgs
 	tf2_geometry_msgs
 	tf2
 )
-
-target_include_directories(publish_motive_odometry_node PRIVATE
+target_include_directories(publish_mocap_odometry_node PRIVATE
 	${CMAKE_SOURCE_DIR}/include/optitrack
 	${VRPN_INSTALL_DIR}
-	include
 )
 
-target_link_libraries(publish_motive_odometry_node
+target_link_libraries(publish_mocap_odometry_node
 	${VRPN_INSTALL_DIR}/libvrpn.a
 	${VRPN_INSTALL_DIR}/libquat.a
 	Threads::Threads
 )
 
 
-get_target_property(INCLUDE_DIRS publish_motive_odometry_node  INCLUDE_DIRECTORIES)
-message(STATUS "Include dirs: ${INCLUDE_DIRS}")
+add_executable(reset_estimator_node ${ESTIMATOR_RESET_SOURCES})
 
+ament_target_dependencies(reset_estimator_node
+	rclcpp
+	px4_msgs
+)
 
-install(TARGETS
-	publish_motive_odometry_node	
-	DESTINATION lib/${PROJECT_NAME}
+target_include_directories(reset_estimator_node PRIVATE
+	${CMAKE_SOURCE_DIR}/include/optitrack
 )
 
 
+target_link_libraries(reset_estimator_node
+	Threads::Threads
+)
+
+install(TARGETS
+	publish_mocap_odometry_node	
+	reset_estimator_node
+	DESTINATION lib/${PROJECT_NAME}
+)
 
 ament_package()
