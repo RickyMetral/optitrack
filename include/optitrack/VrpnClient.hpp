@@ -13,8 +13,8 @@ class VrpnClient : public rclcpp::Node
 {
 private:
 	rclcpp::Publisher<px4_msgs::msg::VehicleOdometry>::SharedPtr odom_publisher_;
-	rclcpp::TimerBase::SharedPtr timer_;
-	VehicleOdometry odom_msg;
+	rclcpp::TimerBase::SharedPtr timer_;//Wall timer for mainloop callback
+	VehicleOdometry odom_msg;//Base msg our pubslisher uses
 	vrpn_Connection* connection;//The connection object for vrpn server
 	std::shared_ptr<vrpn_Tracker_Remote> tracker;//The vrpn tracker object
 

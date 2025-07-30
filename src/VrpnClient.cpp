@@ -174,12 +174,12 @@ VrpnClient::VrpnClient(std::string rigidBodyName, std::string server_address) : 
     }
 
     // Create Tracker client attached to existing connection
-    //this->tracker = std::make_shared<vrpn_Tracker_Remote>(full_address.c_str(), connection);
     this->tracker = std::make_shared<vrpn_Tracker_Remote>(full_address.c_str(), connection);
 
     // Register callback function
     tracker->register_change_handler(this, &VrpnClient::handle_pose);
-    //tracker->register_change_handler(this, &VrpnClient::handle_vel);
+
+    //tracker->register_change_handler(this, &VrpnClient::handle_vel); We don't receive velocity from motive
 
     std::cout << "Attempting connection to VRPN server at: " << full_address << std::endl;
 
@@ -198,18 +198,20 @@ VrpnClient::VrpnClient(std::string rigidBodyName, std::string server_address) : 
        	RCLCPP_FATAL(this->get_logger(), "Failed to connect to VRPN server after waiting. Exiting...");
 	raise(SIGINT);
     }
+    //Call our mainloop every 5ms
     this->timer_ = this->create_wall_timer(
-		   std::chrono::milliseconds(10),
+		   std::chrono::milliseconds(5),
 		   std::bind(&VrpnClient::mainloop, this));
 
 }
 
 VrpnClient::VrpnClient() : Node("publish_mocap_odometry_node")
 {
-    // Set your tracker name & VRPN server address
+    //Set params for our launch file
     this->declare_parameter<std::string>("rigid_body_name", "starling_2");
     this->declare_parameter<std::string>("server_address", "192.168.1.42:3883");
 
+    // Set your tracker name & VRPN server address
     std::string rigid_body_name = this->get_parameter("rigid_body_name").as_string();
     std::string server_address = this->get_parameter("server_address").as_string();
 
@@ -226,12 +228,11 @@ VrpnClient::VrpnClient() : Node("publish_mocap_odometry_node")
     }
 
     // Create Tracker client attached to existing connection
-    //this->tracker = std::make_shared<vrpn_Tracker_Remote>(full_address.c_str(), connection);
     this->tracker = std::make_shared<vrpn_Tracker_Remote>(full_address.c_str(), connection);
 
     // Register callback function
     tracker->register_change_handler(this, &VrpnClient::handle_pose);
-    //tracker->register_change_handler(this, &VrpnClient::handle_vel);
+    //tracker->register_change_handler(this, &VrpnClient::handle_vel); We don't stream vel from motive
 
     std::cout << "Attempting connection to VRPN server at: " << full_address << std::endl;
 
@@ -250,8 +251,9 @@ VrpnClient::VrpnClient() : Node("publish_mocap_odometry_node")
        	RCLCPP_FATAL(this->get_logger(), "Failed to connect to VRPN server after waiting. Exiting...");
 	raise(SIGINT);
     }
+    //Call our mainloop every 5ms
     this->timer_ = this->create_wall_timer(
-		   std::chrono::milliseconds(10),
+		   std::chrono::milliseconds(5),
 		   std::bind(&VrpnClient::mainloop, this));
 
 }
@@ -265,6 +267,7 @@ VrpnClient::~VrpnClient()
 
 void VrpnClient::mainloop()
 {  
+   //Keeps our connection alive and calls tracker callbacks
    connection->mainloop();
    tracker->mainloop();
 }
