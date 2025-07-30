@@ -204,6 +204,58 @@ VrpnClient::VrpnClient(std::string rigidBodyName, std::string server_address) : 
 
 }
 
+VrpnClient::VrpnClient() : Node("publish_mocap_odometry_node")
+{
+    // Set your tracker name & VRPN server address
+    this->declare_parameter<std::string>("rigid_body_name", "starling_2");
+    this->declare_parameter<std::string>("server_address", "192.168.1.42:3883");
+
+    std::string rigid_body_name = this->get_parameter("rigid_body_name").as_string();
+    std::string server_address = this->get_parameter("server_address").as_string();
+
+    const std::string full_address = rigid_body_name + "@" + server_address;
+    set_msg(odom_msg);//Sets the default parameters for our message
+    this->odom_publisher_ = this->create_publisher<px4_msgs::msg::VehicleOdometry>("/fmu/in/vehicle_visual_odometry", 10); 
+
+    // Use vrpn_get_connection_by_name() instead of implicit connection
+    this->connection = vrpn_get_connection_by_name(full_address.c_str());
+
+    if (connection == nullptr) {
+        std::cerr << "Failed to create VRPN connection object." << std::endl;
+	exit(-1);
+    }
+
+    // Create Tracker client attached to existing connection
+    //this->tracker = std::make_shared<vrpn_Tracker_Remote>(full_address.c_str(), connection);
+    this->tracker = std::make_shared<vrpn_Tracker_Remote>(full_address.c_str(), connection);
+
+    // Register callback function
+    tracker->register_change_handler(this, &VrpnClient::handle_pose);
+    //tracker->register_change_handler(this, &VrpnClient::handle_vel);
+
+    std::cout << "Attempting connection to VRPN server at: " << full_address << std::endl;
+
+    // Allow time for connection handshake
+    const int initial_wait_iterations = 25;
+    for (int i = 0; i < initial_wait_iterations; i++) {
+        connection->mainloop();
+        tracker->mainloop();
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    // Verify connection
+    if (connection->connected()) {
+        RCLCPP_INFO(this->get_logger(), "Successfully connected to VRPN server.");
+    } else {
+       	RCLCPP_FATAL(this->get_logger(), "Failed to connect to VRPN server after waiting. Exiting...");
+	raise(SIGINT);
+    }
+    this->timer_ = this->create_wall_timer(
+		   std::chrono::milliseconds(10),
+		   std::bind(&VrpnClient::mainloop, this));
+
+}
+
 VrpnClient::~VrpnClient()
 {
    this->tracker->unregister_change_handler(this, &VrpnClient::handle_pose);
