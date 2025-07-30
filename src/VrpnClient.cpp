@@ -1,4 +1,5 @@
 #include <iostream>
+#include <csignal>
 #include <math.h>
 #include <fstream>
 #include <string>
@@ -194,9 +195,8 @@ VrpnClient::VrpnClient(std::string rigidBodyName, std::string server_address) : 
     if (connection->connected()) {
         RCLCPP_INFO(this->get_logger(), "Successfully connected to VRPN server.");
     } else {
-       	RCLCPP_ERROR(this->get_logger(), "Failed to connect to VRPN server after waiting.");
-	rclcpp::shutdown();
-	exit(1);
+       	RCLCPP_FATAL(this->get_logger(), "Failed to connect to VRPN server after waiting. Exiting...");
+	raise(SIGINT);
     }
     this->timer_ = this->create_wall_timer(
 		   std::chrono::milliseconds(10),
