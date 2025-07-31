@@ -42,9 +42,9 @@ private:
 		//RCLCPP_INFO(this->get_logger(), "New Position: %.3f, %.3f, %.3f",
 			   //msg->position[0], msg->position[1], msg->position[2]);
 
-		if(x_values.size() > 10) {x_values.erase(x_values.begin());}
-		if(y_values.size() > 10) {y_values.erase(y_values.begin());}
-		if(z_values.size() > 10) {z_values.erase(z_values.begin());}
+		if(x_values.size() > 30) {x_values.erase(x_values.begin());}
+		if(y_values.size() > 30) {y_values.erase(y_values.begin());}
+		if(z_values.size() > 30) {z_values.erase(z_values.begin());}
 
 	}
 
