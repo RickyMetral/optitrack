@@ -60,20 +60,24 @@ public:
         delete this->connection;
     }
 
-    calcMsgFrequency()
+    double calcMsgFrequency()
     {
         // Calculate frequency if enough samples
-        if (self->timestamps.size() >= 2) {
+        if (this->timestamps.size() >= 2) {
             vector<double> deltas;
-            for (size_t i = 1; i < self->timestamps.size(); ++i) {
-                deltas.push_back(self->timestamps[i] - self->timestamps[i - 1]);
+            for (size_t i = 1; i < this->timestamps.size(); ++i) {
+                deltas.push_back(this->timestamps[i] - this->timestamps[i - 1]);
             }
 
             double avg_interval_us = std::accumulate(deltas.begin(), deltas.end(), 0.0) / deltas.size();
             double frequency_hz = 1e6 / avg_interval_us;//1e6 converts microseconds -> seconds
 
-            RCLCPP_INFO(self->get_logger(), "Average Delta Time: %f\nTracker frequency: %.2f Hz", avg_interval_us/1000, frequency_hz);
+            RCLCPP_INFO(this->get_logger(), "Average Delta Time: %f\nTracker frequency: %.2f Hz", 
+			   avg_interval_us/1000, frequency_hz);
+
+	    return frequency_hz;
         }
+	return -1;
     }
 
 

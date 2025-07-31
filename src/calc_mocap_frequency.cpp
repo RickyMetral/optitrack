@@ -1,12 +1,12 @@
 #include "CalcFrequency.hpp"
 #include "rclcpp/rclcpp.hpp"
-
+#include <iostream>
 
 int main(int argc, char** argv){
     rclcpp::init(argc, argv);
 
     if(argc != 2){
-        RCLCPP_ERR(rclcpp::get_logger("main"), "Usage: ros2 run optitrack calc_mocap_frequency_node <rigid_body_name");
+	    std::cerr <<  "Usage: ros2 run optitrack calc_mocap_frequency_node <rigid_body_name\n";
         return 1;
     }
 
